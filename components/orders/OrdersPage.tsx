@@ -218,7 +218,7 @@ async function fetchCustomerOrders(
 
     const response =
       await fetch(
-        `${baseUrl}/api/orders?page=${page}&limit=${limit}`,
+        `${baseUrl}/api/orders/my?page=${page}&limit=${limit}`,
         {
           method: "GET",
 
