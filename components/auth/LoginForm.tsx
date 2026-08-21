@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  Suspense,
   useState,
 } from "react";
 
@@ -62,7 +63,7 @@ type PendingCartItem = {
    COMPONENT
 ============================================================ */
 
-export default function LoginForm() {
+function LoginFormContent() {
   const router =
     useRouter();
 
@@ -920,6 +921,31 @@ export default function LoginForm() {
         </div>
       </section>
     </main>
+  );
+}
+
+/* ============================================================
+   LOGIN FORM WRAPPER
+   Next.js requires useSearchParams() to render below a Suspense
+   boundary during production builds.
+============================================================ */
+
+export default function LoginForm() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-cyan-50 px-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
+            <span className="text-sm font-medium text-slate-500">
+              Loading login...
+            </span>
+          </div>
+        </main>
+      }
+    >
+      <LoginFormContent />
+    </Suspense>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useSyncExternalStore,
 } from "react";
@@ -218,7 +219,7 @@ async function fetchCustomerOrders(
 
     const response =
       await fetch(
-        `${baseUrl}/api/orders/my?page=${page}&limit=${limit}`,
+        `${baseUrl}/api/orders?page=${page}&limit=${limit}`,
         {
           method: "GET",
 
@@ -355,7 +356,7 @@ async function fetchCustomerOrders(
    ORDERS PAGE
 ============================================================ */
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const router =
     useRouter();
 
@@ -741,6 +742,40 @@ export default function OrdersPage() {
         )}
       </div>
     </main>
+  );
+}
+
+/* ============================================================
+   ORDERS PAGE WRAPPER
+   Next.js 16 requires useSearchParams() to be rendered below a
+   Suspense boundary during production builds.
+============================================================ */
+
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto flex min-h-[65vh] max-w-4xl items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <SpinnerIcon />
+              </div>
+
+              <h1 className="mt-5 text-xl font-bold text-slate-900">
+                Loading your orders...
+              </h1>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Please wait a moment.
+              </p>
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <OrdersPageContent />
+    </Suspense>
   );
 }
 
