@@ -42,15 +42,11 @@ type CreateOrderResponse = {
   data?: {
     order?: {
       _id: string;
-
       totalAmount: number;
-
       status: string;
-
       paymentMethod:
         | "COD"
         | "ONLINE";
-
       paymentStatus:
         | "PENDING"
         | "PAID"
@@ -78,28 +74,21 @@ type CreateOrderResponse = {
 
 /* ============================================================
    CART SUBSCRIPTION
-
    No useEffect required.
 ============================================================ */
 
 /*
- * useSyncExternalStore requires a cached/stable snapshot.
- *
- * IMPORTANT:
- * We keep the current cart snapshot at module level.
- *
- * The subscription also refreshes the snapshot immediately
- * when CheckoutPage mounts. This fixes the stale snapshot
- * problem caused by Next.js route prefetching.
+ * useSyncExternalStore requires the snapshots to be stable.
+ * Keeping these references at module scope prevents React from
+ * seeing a new array on every render and entering an update loop.
  */
-
 const EMPTY_CART: CartItem[] = [];
 
 let clientCartSnapshot: CartItem[] =
   EMPTY_CART;
 
 /* ============================================================
-   INITIAL SNAPSHOT
+   INITIAL CLIENT SNAPSHOT
 ============================================================ */
 
 if (
@@ -108,17 +97,6 @@ if (
 ) {
   clientCartSnapshot =
     getCart();
-}
-
-/* ============================================================
-   REFRESH SNAPSHOT
-============================================================ */
-
-function refreshClientCartSnapshot() {
-  clientCartSnapshot =
-    getCart();
-
-  return clientCartSnapshot;
 }
 
 /* ============================================================
@@ -135,62 +113,27 @@ function subscribeToCart(
     return () => {};
   }
 
-  /*
-   * CRITICAL FIX:
-   *
-   * When Next.js prefetched this route earlier, the module-level
-   * snapshot may contain an old quantity.
-   *
-   * Re-read localStorage when the component actually subscribes.
-   */
-
-  refreshClientCartSnapshot();
-
-  /*
-   * Notify React after subscription is established.
-   *
-   * queueMicrotask prevents calling the external-store
-   * subscriber in the middle of the subscribe operation.
-   */
-
-  queueMicrotask(() => {
-    callback();
-  });
-
-  /* ==========================================================
-     SAME-TAB CART UPDATE
-  ========================================================== */
-
   const handleCartUpdate =
     () => {
-      refreshClientCartSnapshot();
+      clientCartSnapshot =
+        getCart();
 
       callback();
     };
 
-  /* ==========================================================
-     OTHER-TAB STORAGE UPDATE
-  ========================================================== */
-
   const handleStorage =
-    (
-      event: StorageEvent
-    ) => {
+    (event: StorageEvent) => {
       if (
         event.key ===
           CART_STORAGE_KEY ||
-        event.key ===
-          null
+        event.key === null
       ) {
-        refreshClientCartSnapshot();
+        clientCartSnapshot =
+          getCart();
 
         callback();
       }
     };
-
-  /* ==========================================================
-     LISTENERS
-  ========================================================== */
 
   window.addEventListener(
     CART_UPDATED_EVENT,
@@ -201,10 +144,6 @@ function subscribeToCart(
     "storage",
     handleStorage
   );
-
-  /* ==========================================================
-     CLEANUP
-  ========================================================== */
 
   return () => {
     window.removeEventListener(
@@ -246,7 +185,8 @@ export default function CheckoutPage() {
   /* ==========================================================
      CART
 
-     No useEffect.
+     Server and first client render both use [].
+     After hydration, useSyncExternalStore reads localStorage.
   ========================================================== */
 
   const cart =
@@ -263,15 +203,14 @@ export default function CheckoutPage() {
   const [
     form,
     setForm,
-  ] =
-    useState<ShippingForm>({
-      name: "",
-      phone: "",
-      address: "",
-      city: "",
-      area: "",
-      postalCode: "",
-    });
+  ] = useState<ShippingForm>({
+    name: "",
+    phone: "",
+    address: "",
+    city: "",
+    area: "",
+    postalCode: "",
+  });
 
   /* ==========================================================
      PAYMENT
@@ -280,10 +219,9 @@ export default function CheckoutPage() {
   const [
     paymentMethod,
     setPaymentMethod,
-  ] =
-    useState<PaymentMethod>(
-      "COD"
-    );
+  ] = useState<PaymentMethod>(
+    "COD"
+  );
 
   /* ==========================================================
      UI
@@ -304,11 +242,9 @@ export default function CheckoutPage() {
   ========================================================== */
 
   const subtotal =
-    getCartTotal(
-      cart
-    );
+    getCartTotal(cart);
 
-  const deliveryCharge =
+  const deliveryCharge: number =
     0;
 
   const grandTotal =
@@ -324,11 +260,8 @@ export default function CheckoutPage() {
     value: string
   ) => {
     setForm(
-      (
-        current
-      ) => ({
+      (current) => ({
         ...current,
-
         [field]:
           value,
       })
@@ -356,22 +289,11 @@ export default function CheckoutPage() {
       setError("");
 
       /* ======================================================
-         REFRESH CART ONE MORE TIME BEFORE ORDER
-         
-         This makes sure the order is always created from the
-         latest localStorage quantity, not stale React state.
-      ====================================================== */
-
-      const latestCart =
-        getCart();
-
-      /* ======================================================
          EMPTY CART
       ====================================================== */
 
       if (
-        latestCart.length ===
-        0
+        cart.length === 0
       ) {
         setError(
           "Your cart is empty."
@@ -501,17 +423,12 @@ export default function CheckoutPage() {
 
         /* ====================================================
            REQUEST BODY
-           
-           IMPORTANT:
-           Use latestCart, not potentially stale `cart`.
         ==================================================== */
 
         const requestBody = {
           items:
-            latestCart.map(
-              (
-                item
-              ) => ({
+            cart.map(
+              (item) => ({
                 medicineId:
                   item.medicineId,
 
@@ -536,16 +453,6 @@ export default function CheckoutPage() {
 
           paymentMethod,
         };
-
-        console.log(
-          "[CHECKOUT] Final cart before order:",
-          latestCart
-        );
-
-        console.log(
-          "[CHECKOUT] Order request:",
-          requestBody
-        );
 
         /* ====================================================
            POST ORDER
@@ -578,10 +485,6 @@ export default function CheckoutPage() {
                 ),
             }
           );
-
-        /* ====================================================
-           RESPONSE
-        ==================================================== */
 
         const responseText =
           await response.text();
@@ -652,16 +555,8 @@ export default function CheckoutPage() {
 
         clearCart();
 
-        /*
-         * Also synchronize our current snapshot.
-         */
-
-        clientCartSnapshot =
-          EMPTY_CART;
-
         const orderId =
-          result.data
-            ?.order?._id;
+          result.data?.order?._id;
 
         if (orderId) {
           router.replace(
@@ -680,18 +575,16 @@ export default function CheckoutPage() {
         );
 
         router.refresh();
-      } catch (
-        submitError
-      ) {
+      } catch (error) {
         console.error(
           "Checkout Order Error:",
-          submitError
+          error
         );
 
         if (
-          submitError instanceof
+          error instanceof
             TypeError &&
-          submitError.message ===
+          error.message ===
             "Failed to fetch"
         ) {
           setError(
@@ -702,31 +595,32 @@ export default function CheckoutPage() {
         }
 
         setError(
-          submitError instanceof
-            Error
-            ? submitError.message
+          error instanceof Error
+            ? error.message
             : "Unable to place your order."
         );
       } finally {
-        setLoading(
-          false
-        );
+        setLoading(false);
       }
     };
 
   /* ==========================================================
      EMPTY CART
+     
+     During SSR/hydration this can temporarily show the empty
+     state because server snapshot is [].
+     
+     After hydration, useSyncExternalStore updates it from
+     localStorage without causing hydration mismatch.
   ========================================================== */
 
   if (
-    cart.length ===
-    0
+    cart.length === 0
   ) {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center">
           <div className="w-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12">
-
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
               <CartIcon />
             </div>
@@ -746,7 +640,6 @@ export default function CheckoutPage() {
             >
               Browse Medicines
             </Link>
-
           </div>
         </div>
       </main>
@@ -760,10 +653,9 @@ export default function CheckoutPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-[1280px]">
-
-        {/* ====================================================
+        {/* ==================================================
             HEADER
-        ===================================================== */}
+        =================================================== */}
 
         <div className="mb-7">
           <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
@@ -780,9 +672,9 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        {/* ====================================================
+        {/* ==================================================
             ERROR
-        ===================================================== */}
+        =================================================== */}
 
         {error && (
           <div
@@ -801,14 +693,14 @@ export default function CheckoutPage() {
           }
         >
           <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-
             {/* =================================================
                 LEFT COLUMN
             ================================================== */}
 
             <div className="space-y-6">
-
-              {/* DELIVERY */}
+              {/* ===============================================
+                  DELIVERY
+              ================================================ */}
 
               <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <div>
@@ -826,7 +718,6 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
-
                   <Field
                     label="Full Name"
                     required
@@ -947,11 +838,12 @@ export default function CheckoutPage() {
                       )
                     }
                   />
-
                 </div>
               </section>
 
-              {/* PAYMENT */}
+              {/* ===============================================
+                  PAYMENT
+              ================================================ */}
 
               <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <div>
@@ -969,7 +861,6 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-
                   <PaymentOption
                     selected={
                       paymentMethod ===
@@ -1010,13 +901,11 @@ export default function CheckoutPage() {
                       loading
                     }
                   />
-
                 </div>
 
                 {paymentMethod ===
                   "ONLINE" && (
                   <div className="mt-4 flex items-start gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
-
                     <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-cyan-600">
                       <InfoIcon />
                     </span>
@@ -1032,10 +921,8 @@ export default function CheckoutPage() {
                         for the prototype.
                       </p>
                     </div>
-
                   </div>
                 )}
-
               </section>
             </div>
 
@@ -1045,9 +932,7 @@ export default function CheckoutPage() {
 
             <aside className="lg:sticky lg:top-24 lg:self-start">
               <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-
                 <div className="flex items-center justify-between">
-
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">
                       Step 3
@@ -1059,16 +944,17 @@ export default function CheckoutPage() {
                   </div>
 
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
-                    {cart.length}{" "}
+                    {
+                      cart.length
+                    }{" "}
                     {cart.length ===
                     1
                       ? "item"
                       : "items"}
                   </span>
-
                 </div>
 
-                {/* ITEMS */}
+                {/* Items */}
 
                 <div className="mt-5 space-y-3">
                   {cart.map(
@@ -1081,7 +967,6 @@ export default function CheckoutPage() {
                         }
                         className="flex gap-3 rounded-2xl bg-slate-50 p-3"
                       >
-
                         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
                           {item.image ? (
                             <img
@@ -1099,7 +984,6 @@ export default function CheckoutPage() {
                         </div>
 
                         <div className="min-w-0 flex-1">
-
                           <p className="truncate text-xs font-bold text-slate-800">
                             {
                               item.name
@@ -1115,7 +999,6 @@ export default function CheckoutPage() {
                           )}
 
                           <div className="mt-1.5 flex items-center justify-between gap-2">
-
                             <span className="text-[10px] font-semibold text-slate-500">
                               Qty:{" "}
                               {
@@ -1132,7 +1015,6 @@ export default function CheckoutPage() {
                                 2
                               )}
                             </span>
-
                           </div>
                         </div>
                       </div>
@@ -1140,14 +1022,13 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* DIVIDER */}
+                {/* Divider */}
 
                 <div className="my-5 h-px bg-slate-100" />
 
-                {/* TOTALS */}
+                {/* Totals */}
 
                 <div className="space-y-3">
-
                   <SummaryRow
                     label="Subtotal"
                     value={`৳${subtotal.toFixed(
@@ -1170,7 +1051,6 @@ export default function CheckoutPage() {
                   <div className="h-px bg-slate-100" />
 
                   <div className="flex items-end justify-between gap-4">
-
                     <div>
                       <p className="text-xs font-medium text-slate-500">
                         Grand Total
@@ -1187,14 +1067,12 @@ export default function CheckoutPage() {
                         2
                       )}
                     </p>
-
                   </div>
                 </div>
 
-                {/* PAYMENT */}
+                {/* Selected Payment */}
 
                 <div className="mt-5 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5">
-
                   {paymentMethod ===
                   "COD" ? (
                     <CashIcon />
@@ -1203,7 +1081,6 @@ export default function CheckoutPage() {
                   )}
 
                   <div className="min-w-0">
-
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       Payment
                     </p>
@@ -1214,11 +1091,10 @@ export default function CheckoutPage() {
                         ? "Cash on Delivery"
                         : "Online Payment · Prototype"}
                     </p>
-
                   </div>
                 </div>
 
-                {/* CONFIRM */}
+                {/* Confirm */}
 
                 <button
                   type="submit"
@@ -1230,11 +1106,13 @@ export default function CheckoutPage() {
                   {loading ? (
                     <>
                       <SpinnerIcon />
+
                       Placing Order...
                     </>
                   ) : (
                     <>
                       Confirm Order
+
                       <ArrowIcon />
                     </>
                   )}
@@ -1244,7 +1122,6 @@ export default function CheckoutPage() {
                   By placing the order, you confirm that the
                   information provided above is correct.
                 </p>
-
               </section>
             </aside>
           </div>
@@ -1290,12 +1167,8 @@ function Field({
       </label>
 
       <input
-        type={
-          type
-        }
-        value={
-          value
-        }
+        type={type}
+        value={value}
         placeholder={
           placeholder
         }
@@ -1374,9 +1247,7 @@ function PaymentOption({
       </span>
 
       <div className="mt-3 pr-6">
-
         <div className="flex items-center gap-2">
-
           <p className="text-sm font-bold text-slate-800">
             {title}
           </p>
@@ -1386,7 +1257,6 @@ function PaymentOption({
               {badge}
             </span>
           )}
-
         </div>
 
         <p className="mt-1 text-[11px] leading-5 text-slate-400">
