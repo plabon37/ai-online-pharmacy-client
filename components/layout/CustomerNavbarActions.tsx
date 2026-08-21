@@ -3,11 +3,15 @@
 import {
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 
 import Link from "next/link";
 
-import { usePathname } from "next/navigation";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
 
 import {
   getCart,
@@ -19,24 +23,34 @@ import {
 
 type CustomerUser = {
   id: string;
+
   name: string;
+
   email: string;
+
   role: "CUSTOMER";
+
   isActive: boolean;
 };
 
 type NavItem = {
   label: string;
+
   href: string;
 };
 
 type Props = {
-  customer: CustomerUser | null;
+  customer:
+    | CustomerUser
+    | null;
+
   navItems: NavItem[];
 };
 
+
+
 /* ============================================================
-   CART COUNT EVENT
+   CART COUNT
 ============================================================ */
 
 const CART_UPDATED_EVENT =
@@ -91,12 +105,13 @@ function subscribeToCart(
     };
 
   const handleStorage =
-    (event: StorageEvent) => {
+    (
+      event: StorageEvent
+    ) => {
       if (
         event.key ===
           "smart_pharmacy_cart" ||
-        event.key ===
-          null
+        event.key === null
       ) {
         callback();
       }
@@ -140,12 +155,34 @@ export default function CustomerNavbarActions({
   const pathname =
     usePathname();
 
+  const router =
+    useRouter();
+
+  /* ==========================================================
+     CART
+  ========================================================== */
+
   const cartCount =
     useSyncExternalStore(
       subscribeToCart,
       getCartCount,
       getServerCartCount
     );
+
+  /* ==========================================================
+     CUSTOMER
+
+     The server provides the currently authenticated customer.
+     Protected customer APIs independently verify the account
+     with requireCustomer(), including isActive.
+  ========================================================== */
+
+  const verifiedCustomer =
+    customer;
+
+  /* ==========================================================
+     UI STATE
+  ========================================================== */
 
   const [
     mobileOpen,
@@ -188,6 +225,7 @@ export default function CustomerNavbarActions({
   const closeMobileMenu =
     () => {
       setMobileOpen(false);
+
       setProfileOpen(false);
     };
 
@@ -198,11 +236,14 @@ export default function CustomerNavbarActions({
   const toggleMobileMenu =
     () => {
       setMobileOpen(
-        (current) =>
-          !current
+        (
+          current
+        ) => !current
       );
 
-      setProfileOpen(false);
+      setProfileOpen(
+        false
+      );
     };
 
   /* ==========================================================
@@ -212,8 +253,9 @@ export default function CustomerNavbarActions({
   const toggleProfileMenu =
     () => {
       setProfileOpen(
-        (current) =>
-          !current
+        (
+          current
+        ) => !current
       );
     };
 
@@ -228,7 +270,9 @@ export default function CustomerNavbarActions({
       name
         .trim()
         .split(/\s+/)
-        .filter(Boolean);
+        .filter(
+          Boolean
+        );
 
     if (
       parts.length ===
@@ -272,7 +316,7 @@ export default function CustomerNavbarActions({
 
         const apiUrl =
           process.env
-            .NEXT_PUBLIC_API_URL;
+            .NEXT_PUBLIC_API_URL?.trim();
 
         if (!apiUrl) {
           throw new Error(
@@ -280,15 +324,9 @@ export default function CustomerNavbarActions({
           );
         }
 
-        const baseUrl =
-          apiUrl.replace(
-            /\/+$/,
-            ""
-          );
-
         const response =
           await fetch(
-            `${baseUrl}/api/auth/customer/logout`,
+            `${apiUrl}/api/auth/customer/logout`,
             {
               method:
                 "POST",
@@ -307,6 +345,7 @@ export default function CustomerNavbarActions({
         let result:
           | {
               success?: boolean;
+
               message?: string;
             }
           | null = null;
@@ -336,13 +375,14 @@ export default function CustomerNavbarActions({
         closeMobileMenu();
 
         /*
-         * Keep cart in localStorage.
-         * Logging out does not remove the
-         * customer's cart.
+         * Keep cart.
          */
 
-        window.location.href =
-          "/";
+        router.replace(
+          "/login"
+        );
+
+        router.refresh();
       } catch (error) {
         console.error(
           "Customer Logout Error:",
@@ -350,7 +390,8 @@ export default function CustomerNavbarActions({
         );
 
         window.alert(
-          error instanceof Error
+          error instanceof
+            Error
             ? error.message
             : "Logout failed."
         );
@@ -368,9 +409,8 @@ export default function CustomerNavbarActions({
       ======================================================= */}
 
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* ==================================================
-            SEARCH
-        =================================================== */}
+
+        {/* SEARCH */}
 
         <Link
           href="/search"
@@ -386,16 +426,15 @@ export default function CustomerNavbarActions({
           <SearchIcon />
         </Link>
 
-        {/* ==================================================
-            CART
-        =================================================== */}
+        {/* CART */}
 
         <Link
           href="/cart"
           aria-label={
             cartCount > 0
               ? `Shopping cart with ${cartCount} ${
-                  cartCount === 1
+                  cartCount ===
+                  1
                     ? "item"
                     : "items"
                 }`
@@ -422,138 +461,132 @@ export default function CustomerNavbarActions({
           )}
         </Link>
 
-        {/* Divider */}
-
         <span className="mx-1 hidden h-7 w-px bg-slate-200 sm:block" />
 
-        {/* ==================================================
-            LOGGED IN
-        =================================================== */}
+        {/* ====================================================
+            VERIFIED CUSTOMER
+        ==================================================== */}
 
-        {customer ? (
-          <div className="relative hidden sm:block">
-            <button
-              type="button"
-              onClick={
-                toggleProfileMenu
-              }
-              aria-expanded={
-                profileOpen
-              }
-              aria-haspopup="menu"
-              className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-slate-50"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white">
-                {getInitials(
-                  customer.name
-                )}
-              </span>
-
-              <span className="hidden max-w-[130px] truncate text-sm font-semibold text-slate-700 xl:block">
-                {customer.name}
-              </span>
-
-              <ChevronDownIcon />
-            </button>
-
-            {profileOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 top-[calc(100%+8px)] z-[70] w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.14)]"
+        {verifiedCustomer ? (
+          <>
+            <div className="relative hidden sm:block">
+              <button
+                type="button"
+                onClick={
+                  toggleProfileMenu
+                }
+                aria-expanded={
+                  profileOpen
+                }
+                aria-haspopup="menu"
+                className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-slate-50"
               >
-                {/* Customer info */}
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white">
+                  {getInitials(
+                    verifiedCustomer.name
+                  )}
+                </span>
 
-                <div className="border-b border-slate-100 p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white">
-                      {getInitials(
-                        customer.name
-                      )}
-                    </span>
+                <span className="hidden max-w-[130px] truncate text-sm font-semibold text-slate-700 xl:block">
+                  {
+                    verifiedCustomer.name
+                  }
+                </span>
 
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-slate-800">
-                        {
-                          customer.name
-                        }
-                      </p>
+                <ChevronDownIcon />
+              </button>
 
-                      <p className="truncate text-[11px] text-slate-400">
-                        {
-                          customer.email
-                        }
-                      </p>
+              {profileOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-[calc(100%+8px)] z-[70] w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.14)]"
+                >
+                  <div className="border-b border-slate-100 p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white">
+                        {getInitials(
+                          verifiedCustomer.name
+                        )}
+                      </span>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-800">
+                          {
+                            verifiedCustomer.name
+                          }
+                        </p>
+
+                        <p className="truncate text-[11px] text-slate-400">
+                          {
+                            verifiedCustomer.email
+                          }
+                        </p>
+                      </div>
                     </div>
                   </div>
+
+                  <div className="p-2">
+                    <ProfileLink
+                      href="/profile"
+                      label="My Profile"
+                      icon={
+                        <UserIcon />
+                      }
+                    />
+
+                    <ProfileLink
+                      href="/orders"
+                      label="My Orders"
+                      icon={
+                        <OrderIcon />
+                      }
+                    />
+
+                    <ProfileLink
+                      href="/prescription"
+                      label="Prescription"
+                      icon={
+                        <PrescriptionIcon />
+                      }
+                    />
+
+                    <ProfileLink
+                      href="/cart"
+                      label={
+                        cartCount >
+                        0
+                          ? `My Cart (${cartCount})`
+                          : "My Cart"
+                      }
+                      icon={
+                        <CartIcon />
+                      }
+                    />
+
+                    <button
+                      type="button"
+                      onClick={
+                        handleLogout
+                      }
+                      disabled={
+                        loggingOut
+                      }
+                      className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
+                        <LogoutIcon />
+                      </span>
+
+                      {loggingOut
+                        ? "Signing out..."
+                        : "Sign Out"}
+                    </button>
+                  </div>
                 </div>
-
-                {/* Menu */}
-
-                <div className="p-2">
-                  <ProfileLink
-                    href="/profile"
-                    label="My Profile"
-                    icon={
-                      <UserIcon />
-                    }
-                  />
-
-                  <ProfileLink
-                    href="/orders"
-                    label="My Orders"
-                    icon={
-                      <OrderIcon />
-                    }
-                  />
-
-                  <ProfileLink
-                    href="/prescription"
-                    label="Prescription"
-                    icon={
-                      <PrescriptionIcon />
-                    }
-                  />
-
-                  <ProfileLink
-                    href="/cart"
-                    label={
-                      cartCount >
-                      0
-                        ? `My Cart (${cartCount})`
-                        : "My Cart"
-                    }
-                    icon={
-                      <CartIcon />
-                    }
-                  />
-
-                  <button
-                    type="button"
-                    onClick={
-                      handleLogout
-                    }
-                    disabled={
-                      loggingOut
-                    }
-                    className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
-                      <LogoutIcon />
-                    </span>
-
-                    {loggingOut
-                      ? "Signing out..."
-                      : "Sign Out"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </>
         ) : (
-          /* =================================================
-             SIGN IN
-          ================================================== */
-
           <Link
             href="/login"
             className="hidden h-10 items-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 text-xs font-semibold text-white shadow-md shadow-emerald-100 transition hover:-translate-y-0.5 hover:shadow-lg sm:flex"
@@ -562,9 +595,7 @@ export default function CustomerNavbarActions({
           </Link>
         )}
 
-        {/* ==================================================
-            MOBILE MENU BUTTON
-        =================================================== */}
+        {/* MOBILE BUTTON */}
 
         <button
           type="button"
@@ -600,7 +631,9 @@ export default function CustomerNavbarActions({
             aria-label="Mobile navigation"
           >
             {navItems.map(
-              (item) => {
+              (
+                item
+              ) => {
                 const active =
                   isActive(
                     item.href
@@ -631,44 +664,26 @@ export default function CustomerNavbarActions({
               }
             )}
 
-            {/* Search */}
-
             <Link
               href="/search"
               onClick={
                 closeMobileMenu
               }
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                isActive(
-                  "/search"
-                )
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
             >
               <SearchIcon />
-
               Search
             </Link>
-
-            {/* Cart */}
 
             <Link
               href="/cart"
               onClick={
                 closeMobileMenu
               }
-              className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                isActive(
-                  "/cart"
-                )
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
+              className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
             >
               <span className="flex items-center gap-3">
                 <CartIcon />
-
                 Cart
               </span>
 
@@ -685,31 +700,25 @@ export default function CustomerNavbarActions({
 
             <div className="my-2 h-px bg-slate-100" />
 
-            {/* =================================================
-                MOBILE LOGGED IN
-            ================================================== */}
-
-            {customer ? (
+            {verifiedCustomer ? (
               <>
-                {/* Customer */}
-
                 <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white">
                     {getInitials(
-                      customer.name
+                      verifiedCustomer.name
                     )}
                   </span>
 
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-slate-800">
                       {
-                        customer.name
+                        verifiedCustomer.name
                       }
                     </p>
 
                     <p className="truncate text-[10px] text-slate-400">
                       {
-                        customer.email
+                        verifiedCustomer.email
                       }
                     </p>
                   </div>
@@ -723,7 +732,6 @@ export default function CustomerNavbarActions({
                   className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   <UserIcon />
-
                   My Profile
                 </Link>
 
@@ -735,7 +743,6 @@ export default function CustomerNavbarActions({
                   className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   <OrderIcon />
-
                   My Orders
                 </Link>
 
@@ -747,7 +754,6 @@ export default function CustomerNavbarActions({
                   className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   <PrescriptionIcon />
-
                   Prescription
                 </Link>
 
@@ -760,7 +766,6 @@ export default function CustomerNavbarActions({
                 >
                   <span className="flex items-center gap-3">
                     <CartIcon />
-
                     My Cart
                   </span>
 
@@ -793,10 +798,6 @@ export default function CustomerNavbarActions({
                 </button>
               </>
             ) : (
-              /* =================================================
-                 MOBILE LOGGED OUT
-              ================================================== */
-
               <>
                 <Link
                   href="/login"
@@ -836,12 +837,16 @@ function ProfileLink({
   icon,
 }: {
   href: string;
+
   label: string;
-  icon: React.ReactNode;
+
+  icon: ReactNode;
 }) {
   return (
     <Link
-      href={href}
+      href={
+        href
+      }
       className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700"
     >
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50">
@@ -854,7 +859,7 @@ function ProfileLink({
 }
 
 /* ============================================================
-   SEARCH ICON
+   ICONS
 ============================================================ */
 
 function SearchIcon() {
@@ -883,10 +888,6 @@ function SearchIcon() {
     </svg>
   );
 }
-
-/* ============================================================
-   CART ICON
-============================================================ */
 
 function CartIcon() {
   return (
@@ -922,10 +923,6 @@ function CartIcon() {
   );
 }
 
-/* ============================================================
-   USER ICON
-============================================================ */
-
 function UserIcon() {
   return (
     <svg
@@ -952,10 +949,6 @@ function UserIcon() {
     </svg>
   );
 }
-
-/* ============================================================
-   ORDER ICON
-============================================================ */
 
 function OrderIcon() {
   return (
@@ -985,10 +978,6 @@ function OrderIcon() {
     </svg>
   );
 }
-
-/* ============================================================
-   PRESCRIPTION ICON
-============================================================ */
 
 function PrescriptionIcon() {
   return (
@@ -1022,10 +1011,6 @@ function PrescriptionIcon() {
   );
 }
 
-/* ============================================================
-   LOGOUT ICON
-============================================================ */
-
 function LogoutIcon() {
   return (
     <svg
@@ -1053,10 +1038,6 @@ function LogoutIcon() {
   );
 }
 
-/* ============================================================
-   CHEVRON
-============================================================ */
-
 function ChevronDownIcon() {
   return (
     <svg
@@ -1078,10 +1059,6 @@ function ChevronDownIcon() {
   );
 }
 
-/* ============================================================
-   MENU ICON
-============================================================ */
-
 function MenuIcon() {
   return (
     <svg
@@ -1100,10 +1077,6 @@ function MenuIcon() {
     </svg>
   );
 }
-
-/* ============================================================
-   CLOSE ICON
-============================================================ */
 
 function CloseIcon() {
   return (

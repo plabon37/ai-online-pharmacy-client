@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import ChatBot from "@/components/chat/ChatBot";
 
 import "./globals.css";
 
@@ -41,6 +42,14 @@ export default function RootLayout({
         =================================================== */}
 
         <Footer />
+
+        {/* ==================================================
+            AI CHATBOT
+            Appears on every page.
+            Clicking it opens /ai-chat.
+        =================================================== */}
+
+        <ChatBot />
       </body>
     </html>
   );

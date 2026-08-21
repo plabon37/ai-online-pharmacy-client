@@ -234,18 +234,17 @@ export default async function HomePage() {
             </span>
 
             <h1 className="mt-5 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Your trusted
+              A smarter way to
               <span className="text-emerald-600">
                 {" "}
-                digital pharmacy
+                manage your healthcare
               </span>
             </h1>
 
             <p className="mt-5 max-w-xl text-sm leading-7 text-slate-500 sm:text-base sm:leading-8">
-              Browse medicines, discover
-              categories, manage your orders
-              and access smarter healthcare
-              support from one place.
+              Discover medicines, explore healthcare
+              categories, track your orders and access
+              trusted pharmacy services from one place.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -259,12 +258,12 @@ export default async function HomePage() {
               </Link>
 
               <Link
-                href="/ai-chat"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                href="/categories"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
               >
-                Ask AI Assistant
+                Explore Categories
 
-                <ChatIcon />
+                <ArrowIcon />
               </Link>
             </div>
 
@@ -273,17 +272,17 @@ export default async function HomePage() {
             <div className="mt-8 grid max-w-xl grid-cols-3 gap-3">
               <TrustItem
                 value="24/7"
-                label="Access"
+                label="Easy Access"
               />
 
               <TrustItem
-                value="Safe"
+                value="Secure"
                 label="Ordering"
               />
 
               <TrustItem
                 value="Smart"
-                label="Healthcare"
+                label="Pharmacy Care"
               />
             </div>
           </div>
@@ -348,9 +347,14 @@ export default async function HomePage() {
         />
 
         {categories.length === 0 ? (
-          <EmptySection
-            title="Categories are coming soon"
-            description="Once categories are added from the admin panel, they will automatically appear here."
+          <PromoCard
+            href="/categories"
+            eyebrow="Healthcare Collection"
+            title="Explore our medicine categories"
+            description="Browse pain relief, vitamins, digestive care, personal care, and more in one convenient place."
+            action="Explore Categories"
+            icon={<CategoryIcon />}
+            variant="emerald"
           />
         ) : (
           <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
@@ -398,9 +402,14 @@ export default async function HomePage() {
           />
 
           {medicines.length === 0 ? (
-            <EmptySection
-              title="No medicines available"
-              description="Medicines added through the admin panel will automatically appear here."
+            <PromoCard
+              href="/medicines"
+              eyebrow="Pharmacy Store"
+              title="Discover medicines for your everyday needs"
+              description="Visit our medicine store to explore available products, prices, stock information, and details."
+              action="Browse Medicines"
+              icon={<MedicineIcon large />}
+              variant="teal"
             />
           ) : (
             <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
@@ -418,50 +427,6 @@ export default async function HomePage() {
               )}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* =====================================================
-          AI SECTION
-      ====================================================== */}
-
-      <section className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 text-white sm:p-8 lg:p-10">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-emerald-500/10 blur-3xl" />
-
-          <div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
-
-          <div className="relative z-10 grid items-center gap-8 lg:grid-cols-[1fr_auto]">
-            <div>
-              <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300 sm:text-xs">
-                AI Healthcare Assistant
-              </span>
-
-              <h2 className="mt-4 max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">
-                Need help finding the right information?
-              </h2>
-
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-                Ask our AI assistant about
-                healthcare information,
-                medicine-related questions
-                and pharmacy services.
-              </p>
-
-              <Link
-                href="/ai-chat"
-                className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-xs font-bold text-white transition hover:bg-emerald-400"
-              >
-                Start AI Chat
-
-                <ArrowIcon />
-              </Link>
-            </div>
-
-            <div className="hidden h-24 w-24 items-center justify-center rounded-3xl bg-white/5 text-emerald-300 ring-1 ring-white/10 lg:flex">
-              <ChatIcon large />
-            </div>
-          </div>
         </div>
       </section>
 
@@ -701,6 +666,110 @@ function QuickLink({
       </span>
 
       <ArrowIcon />
+    </Link>
+  );
+}
+
+/* ============================================================
+   PROMO CARD
+============================================================ */
+
+function PromoCard({
+  href,
+  eyebrow,
+  title,
+  description,
+  action,
+  icon,
+  variant = "emerald",
+}: {
+  href: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  action: string;
+  icon: React.ReactNode;
+  variant?: "emerald" | "teal";
+}) {
+  const emerald =
+    variant === "emerald";
+
+  return (
+    <Link
+      href={href}
+      className="group mt-7 block overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
+    >
+      <div className="relative overflow-hidden">
+        <div
+          className={`absolute inset-0 ${
+            emerald
+              ? "bg-gradient-to-br from-emerald-50 via-white to-cyan-50"
+              : "bg-gradient-to-br from-teal-50 via-white to-emerald-50"
+          }`}
+        />
+
+        <div
+          className={`pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl ${
+            emerald
+              ? "bg-emerald-200/45"
+              : "bg-teal-200/45"
+          }`}
+        />
+
+        <div
+          className={`pointer-events-none absolute -bottom-20 -left-10 h-36 w-36 rounded-full blur-3xl ${
+            emerald
+              ? "bg-cyan-200/35"
+              : "bg-emerald-200/35"
+          }`}
+        />
+
+        <div className="relative grid items-center gap-6 px-6 py-7 sm:px-8 sm:py-9 lg:grid-cols-[1fr_auto] lg:px-10">
+          <div className="flex items-start gap-4">
+            <div
+              className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-emerald-600 shadow-sm ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-105 ${
+                emerald
+                  ? "bg-emerald-100"
+                  : "bg-teal-100"
+              }`}
+            >
+              {icon}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">
+                {eyebrow}
+              </p>
+
+              <h3 className="mt-1.5 max-w-2xl text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+                {title}
+              </h3>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                {description}
+              </p>
+
+              <span className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-emerald-700">
+                {action}
+
+                <ArrowIcon />
+              </span>
+            </div>
+          </div>
+
+          <div className="hidden items-center justify-center lg:flex">
+            <div
+              className={`flex h-24 w-24 items-center justify-center rounded-[28px] text-emerald-600 shadow-lg ring-1 ring-black/5 transition-transform duration-300 group-hover:rotate-3 group-hover:scale-105 ${
+                emerald
+                  ? "bg-white"
+                  : "bg-white"
+              }`}
+            >
+              {icon}
+            </div>
+          </div>
+        </div>
+      </div>
     </Link>
   );
 }
