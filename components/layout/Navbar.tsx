@@ -1,4 +1,7 @@
-import { cookies } from "next/headers";
+import {
+  cookies,
+} from "next/headers";
+
 import Link from "next/link";
 
 import CustomerNavbarActions from "@/components/layout/CustomerNavbarActions";
@@ -58,18 +61,14 @@ const navItems = [
 
 function getApiBaseUrl() {
   const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL?.trim();
+    process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
-    console.error(
-      "Customer Navbar: NEXT_PUBLIC_API_URL is not configured."
-    );
-
     return "";
   }
 
   return apiUrl.replace(
-    /\/+$/,
+    /\/$/,
     ""
   );
 }
@@ -80,10 +79,6 @@ function getApiBaseUrl() {
 
 async function getCustomerSession(): Promise<CustomerUser | null> {
   try {
-    /* ========================================================
-       API URL
-    ======================================================== */
-
     const apiBaseUrl =
       getApiBaseUrl();
 
@@ -91,9 +86,9 @@ async function getCustomerSession(): Promise<CustomerUser | null> {
       return null;
     }
 
-    /* ========================================================
-       READ CUSTOMER COOKIE
-    ======================================================== */
+    /* --------------------------------------------------------
+       Read browser cookies on the server
+    -------------------------------------------------------- */
 
     const cookieStore =
       await cookies();
@@ -107,48 +102,27 @@ async function getCustomerSession(): Promise<CustomerUser | null> {
       return null;
     }
 
-    /* ========================================================
-       CUSTOMER SESSION API
-
-       IMPORTANT:
-       Use /me instead of /session.
-    ======================================================== */
+    /* --------------------------------------------------------
+       Forward customer cookie to backend
+    -------------------------------------------------------- */
 
     const response =
       await fetch(
-        `${apiBaseUrl}/api/auth/customer/me`,
+        `${apiBaseUrl}/api/auth/customer/session`,
         {
           method: "GET",
 
           headers: {
-            Accept:
-              "application/json",
-
-            Cookie:
-              `customer_token=${customerToken}`,
+            Cookie: `customer_token=${customerToken}`,
           },
 
-          cache:
-            "no-store",
+          cache: "no-store",
         }
       );
 
-    /* ========================================================
-       RESPONSE CHECK
-    ======================================================== */
-
     if (!response.ok) {
-      console.error(
-        "Customer Navbar Session API failed:",
-        response.status
-      );
-
       return null;
     }
-
-    /* ========================================================
-       CONTENT TYPE
-    ======================================================== */
 
     const contentType =
       response.headers.get(
@@ -160,23 +134,11 @@ async function getCustomerSession(): Promise<CustomerUser | null> {
         "application/json"
       )
     ) {
-      console.error(
-        "Customer Navbar Session API returned non-JSON response."
-      );
-
       return null;
     }
 
-    /* ========================================================
-       PARSE RESPONSE
-    ======================================================== */
-
     const result =
       (await response.json()) as CustomerSessionResponse;
-
-    /* ========================================================
-       VALIDATE RESPONSE
-    ======================================================== */
 
     if (
       !result.success ||
@@ -185,50 +147,20 @@ async function getCustomerSession(): Promise<CustomerUser | null> {
       return null;
     }
 
-    const user =
-      result.data.user;
-
-    /* ========================================================
-       ROLE CHECK
-    ======================================================== */
-
     if (
-      user.role !==
+      result.data.user.role !==
       "CUSTOMER"
     ) {
       return null;
     }
 
-    /* ========================================================
-       ACTIVE CHECK
-    ======================================================== */
-
-    if (!user.isActive) {
+    if (
+      !result.data.user.isActive
+    ) {
       return null;
     }
 
-    /* ========================================================
-       RETURN CUSTOMER
-    ======================================================== */
-
-    return {
-      id:
-        user.id,
-
-      name:
-        user.name || "",
-
-      email:
-        user.email || "",
-
-      role:
-        "CUSTOMER",
-
-      isActive:
-        Boolean(
-          user.isActive
-        ),
-    };
+    return result.data.user;
   } catch (error) {
     console.error(
       "Customer Navbar Session Error:",
