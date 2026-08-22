@@ -1,12 +1,13 @@
 import {
+  cookies,
+} from "next/headers";
+
+import {
   NextResponse,
 } from "next/server";
 
-/* ============================================================
-   CONFIG
-============================================================ */
-
-export const runtime = "nodejs";
+export const runtime =
+  "nodejs";
 
 export const dynamic =
   "force-dynamic";
@@ -40,19 +41,8 @@ export async function POST() {
     const backendUrl =
       getBackendUrl();
 
-    /* ========================================================
-       GET CURRENT CLIENT COOKIE
-    ======================================================== */
-
-    const requestCookie =
-      (
-        await import(
-          "next/headers"
-        )
-      ).cookies;
-
     const cookieStore =
-      await requestCookie();
+      await cookies();
 
     const customerToken =
       cookieStore.get(
@@ -60,17 +50,15 @@ export async function POST() {
       )?.value;
 
     /* ========================================================
-       CALL BACKEND LOGOUT
-       
-       This is server-to-server.
-       Browser CORS is not involved.
+       BACKEND LOGOUT
     ======================================================== */
 
     try {
       await fetch(
         `${backendUrl}/api/auth/customer/logout`,
         {
-          method: "POST",
+          method:
+            "POST",
 
           headers: {
             Accept:
@@ -88,16 +76,11 @@ export async function POST() {
             "no-store",
         }
       );
-    } catch (backendError) {
-      /*
-       * Even if backend logout fails,
-       * we still clear the client cookie.
-       *
-       * This prevents the client from staying
-       * logged in locally.
-       */
+    } catch (
+      backendError
+    ) {
       console.error(
-        "Backend customer logout error:",
+        "Backend logout error:",
         backendError
       );
     }
@@ -127,21 +110,20 @@ export async function POST() {
       "customer_token",
       "",
       {
-        httpOnly: true,
+        httpOnly:
+          true,
 
         secure:
           process.env.NODE_ENV ===
           "production",
 
         sameSite:
-          process.env.NODE_ENV ===
-          "production"
-            ? "lax"
-            : "lax",
+          "lax",
 
         path: "/",
 
-        maxAge: 0,
+        maxAge:
+          0,
 
         expires:
           new Date(0),
@@ -155,21 +137,13 @@ export async function POST() {
       error
     );
 
-    /*
-     * Even in an unexpected error,
-     * return a response that attempts to
-     * clear the client session cookie.
-     */
-
     const response =
       NextResponse.json(
         {
           success: false,
           data: null,
           message:
-            error instanceof Error
-              ? error.message
-              : "Failed to logout",
+            "Failed to logout",
         },
         {
           status: 500,
@@ -180,13 +154,21 @@ export async function POST() {
       "customer_token",
       "",
       {
-        httpOnly: true,
+        httpOnly:
+          true,
+
         secure:
           process.env.NODE_ENV ===
           "production",
-        sameSite: "lax",
+
+        sameSite:
+          "lax",
+
         path: "/",
-        maxAge: 0,
+
+        maxAge:
+          0,
+
         expires:
           new Date(0),
       }
