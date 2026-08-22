@@ -437,34 +437,20 @@ function LoginFormContent() {
            BACKEND URL
         ==================================================== */
 
-        const apiBaseUrl =
-          process.env
-            .NEXT_PUBLIC_API_URL?.trim();
-
-        if (!apiBaseUrl) {
-          throw new Error(
-            "NEXT_PUBLIC_API_URL is not configured."
-          );
-        }
-
-        const cleanApiUrl =
-          apiBaseUrl.replace(
-            /\/+$/,
-            ""
-          );
-
         const endpoint =
-          `${cleanApiUrl}/api/auth/customer/login`;
+          "/api/auth/customer/login";
 
         console.log(
-          "[CUSTOMER LOGIN] Backend:",
+          "[CUSTOMER LOGIN] Client Auth Proxy:",
           endpoint
         );
 
         /* ====================================================
-           DIRECT BACKEND REQUEST
-           
-           No Client API / Proxy.
+           CLIENT SAME-ORIGIN AUTH PROXY
+
+           The Client proxy forwards the request to the
+           Backend and then stores the customer_token cookie
+           on the Client domain.
         ==================================================== */
 
         const response =
@@ -472,8 +458,6 @@ function LoginFormContent() {
             endpoint,
             {
               method: "POST",
-
-              mode: "cors",
 
               headers: {
                 "Content-Type":
@@ -485,6 +469,9 @@ function LoginFormContent() {
 
               credentials:
                 "include",
+
+              cache:
+                "no-store",
 
               body: JSON.stringify({
                 email:
@@ -597,7 +584,7 @@ function LoginFormContent() {
             "Failed to fetch"
         ) {
           setError(
-            "Unable to connect to the backend server. Make sure Backend is running on port 3000 and Client is running on port 3001."
+            "Unable to connect to the pharmacy server. Please check your internet connection and try again."
           );
 
           return;
