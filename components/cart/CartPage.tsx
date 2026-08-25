@@ -432,7 +432,7 @@ function CartItemCard({
 
             <div className="text-left sm:text-right">
               <p className="text-[10px] text-slate-400">
-                Item total
+               Total Item
               </p>
 
               <p className="mt-0.5 text-base font-extrabold text-slate-900">
