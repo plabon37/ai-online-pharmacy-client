@@ -314,22 +314,25 @@ export default function CustomerNavbarActions({
           true
         );
 
-        const apiUrl =
-          process.env
-            .NEXT_PUBLIC_API_URL?.trim();
-
-        if (!apiUrl) {
-          throw new Error(
-            "NEXT_PUBLIC_API_URL is not configured."
-          );
-        }
-
+        /*
+         * IMPORTANT:
+         * Logout goes through the Client's same-origin API route.
+         *
+         * This is required because Client and Backend are deployed
+         * on different Vercel domains. The Client proxy clears the
+         * customer_token cookie on the Client domain.
+         */
         const response =
           await fetch(
-            `${apiUrl}/api/auth/customer/logout`,
+            "/api/auth/customer/logout",
             {
               method:
                 "POST",
+
+              headers: {
+                Accept:
+                  "application/json",
+              },
 
               credentials:
                 "include",
@@ -390,10 +393,9 @@ export default function CustomerNavbarActions({
         );
 
         window.alert(
-          error instanceof
-            Error
+          error instanceof Error
             ? error.message
-            : "Logout failed."
+            : "Unable to sign out. Please try again."
         );
       } finally {
         setLoggingOut(
